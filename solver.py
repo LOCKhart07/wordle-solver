@@ -4,7 +4,6 @@ Wordle solver
 
 from typing import List
 from wordle import Feedback, WordleGame
-import random
 
 
 class WordleSolver:
@@ -60,12 +59,12 @@ class WordleSolver:
 
             feedback, is_correct_guess = game.make_guess(next_guess)
             print(
-                f"Guess: {next_guess}, Feedback: {"".join([i.value for i in feedback])}"
+                f"Guess: {next_guess}, Feedback: {"".join([i.value for i in feedback])}"  # noqa: E501
             )
 
             if is_correct_guess:
                 self.add_guess(next_guess, feedback)
-                return f"Solved! The answer is {next_guess}. Guesses made: {len(self.guesses)}"
+                return f"Solved! The answer is {next_guess}. Guesses made: {len(self.guesses)}"  # noqa: E501
 
             self.add_guess(next_guess, feedback)
 
