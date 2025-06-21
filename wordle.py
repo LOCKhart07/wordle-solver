@@ -5,7 +5,7 @@ feedback mechanisms and game state management.
 """
 
 import enum
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import random
 
 
@@ -21,7 +21,7 @@ class Feedback(enum.Enum):
 class WordleGame:
     """A simple Wordle game implementation."""
 
-    def __init__(self, answer: str = ""):
+    def __init__(self, answer: Optional[str] = ""):
         self.round_limit = 6
         self._current_round = 1
         self.valid_words = set(
