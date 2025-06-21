@@ -6,6 +6,7 @@ feedback mechanisms and game state management.
 
 import enum
 from typing import List, Tuple
+import random
 
 
 class Feedback(enum.Enum):
@@ -20,10 +21,8 @@ class Feedback(enum.Enum):
 class WordleGame:
     """A simple Wordle game implementation."""
 
-    def __init__(self, answer: str):
-
+    def __init__(self, answer: str = ""):
         self.round_limit = 6
-
         self._current_round = 1
         self.valid_words = set(
             [
@@ -33,16 +32,20 @@ class WordleGame:
         )
         if answer:
             if len(answer) != 5 or answer.upper() not in self.valid_words:
-                raise ValueError("Answer must be a 5-letter word.")
+                raise ValueError("Answer must be a 5-letter valid word.")
+            self._answer = answer.upper()
         else:
-            self._answer = "GLADE"
-        self._answer = answer.upper()
+            self._answer = random.choice(list(self.valid_words))
         self._is_won = False
 
     @property
     def current_round(self) -> int:
         """Get the current round number."""
         return self._current_round
+
+    def _complete_round(self) -> None:
+        """Complete the current round."""
+        self._current_round += 1
 
     @property
     def is_game_over(self) -> bool:
@@ -71,20 +74,18 @@ class WordleGame:
 
     def make_guess(self, guess: str) -> Tuple[List[Feedback], bool]:
         """Make a guess and return feedback and whether the game is won."""
+        print(f"Round {self.current_round}: Guessing '{guess}'")
         if self.is_game_over:
             raise ValueError("Game is already over. Please start a new game.")
         guess = guess.upper()
         if not self._is_valid_word(guess):
             raise ValueError("Invalid word. Please try again.")
         feedback = self._get_feedback(guess)
-        self._current_round += 1
+        self._complete_round()
         if feedback == [Feedback.GREEN] * 5:
             self._is_won = True
             return feedback, True
-        elif self._current_round > self.round_limit:
-            raise ValueError("Maximum number of rounds reached.")
-        else:
-            return feedback, False
+        return feedback, False
 
 
 if __name__ == "__main__":
