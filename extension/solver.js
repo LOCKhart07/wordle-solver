@@ -49,36 +49,72 @@ function updateBestGuessDiv(bestGuess) {
     }
 }
 
-
 function getPossibleAnswers(guessesWithFeedback) {
     let possibleAnswers = validWords;
 
-    const includedLetters = new Set();
+    // Track letter constraints per position and globally
+    const greenPositions = Array(5).fill(null); // letter at position if green
+    const yellowPositions = Array(5).fill(null).map(() => new Set()); // letters that can't be at position
+    const minLetterCounts = {}; // minimum times a letter must appear
+    const maxLetterCounts = {}; // maximum times a letter can appear
+
+    // First pass: gather constraints
     for (const guess of guessesWithFeedback) {
+        const letterCounts = {};
+        const yellowCounts = {};
+        const blackCounts = {};
+
+        // Count occurrences and feedbacks
         for (let i = 0; i < guess.length; i++) {
             const [char, feedback] = guess[i];
-            if (feedback === "G") { // Green
-                possibleAnswers = new Set(
-                    Array.from(possibleAnswers).filter(word => word[i] === char)
-                );
-                includedLetters.add(char); // Add to included letters
-            } else if (feedback === "Y") { // Yellow
-                possibleAnswers = new Set(
-                    Array.from(possibleAnswers).filter(word => word.includes(char) && word[i] !== char)
-                );
-                includedLetters.add(char); // Add to included letters
-            } else if (feedback === "B") { // Black
-                if (!includedLetters.has(char)) {
-
-                    possibleAnswers = new Set(
-                        Array.from(possibleAnswers).filter(word => !word.includes(char))
-                    );
-                }
+            letterCounts[char] = (letterCounts[char] || 0) + 1;
+            if (feedback === "G") {
+                greenPositions[i] = char;
+                minLetterCounts[char] = Math.max(minLetterCounts[char] || 0, letterCounts[char]);
+            } else if (feedback === "Y") {
+                yellowPositions[i].add(char);
+                yellowCounts[char] = (yellowCounts[char] || 0) + 1;
+                minLetterCounts[char] = Math.max(minLetterCounts[char] || 0, yellowCounts[char]);
+            } else if (feedback === "B") {
+                blackCounts[char] = (blackCounts[char] || 0) + 1;
             }
-
         }
 
+        // Handle black logic for repeated letters
+        for (const [char, count] of Object.entries(blackCounts)) {
+            // If char also has green/yellow in this guess, set max count to min count seen
+            if ((yellowCounts[char] || 0) + (guess.filter(([c, f]) => c === char && f === "G").length) > 0) {
+                maxLetterCounts[char] = minLetterCounts[char] || 0;
+            } else {
+                // If only black, letter must not appear at all
+                maxLetterCounts[char] = 0;
+            }
+        }
     }
+
+    // Now filter possible answers
+    possibleAnswers = new Set(Array.from(possibleAnswers).filter(word => {
+        // Green check
+        for (let i = 0; i < 5; i++) {
+            if (greenPositions[i] && word[i] !== greenPositions[i]) return false;
+        }
+        // Yellow check
+        for (let i = 0; i < 5; i++) {
+            for (const char of yellowPositions[i]) {
+                if (word[i] === char) return false;
+            }
+        }
+        // Min/max letter count check
+        const wordLetterCounts = {};
+        for (const c of word) wordLetterCounts[c] = (wordLetterCounts[c] || 0) + 1;
+        for (const [char, minCount] of Object.entries(minLetterCounts)) {
+            if ((wordLetterCounts[char] || 0) < minCount) return false;
+        }
+        for (const [char, maxCount] of Object.entries(maxLetterCounts)) {
+            if ((wordLetterCounts[char] || 0) > maxCount) return false;
+        }
+        return true;
+    }));
 
     return Array.from(possibleAnswers);
 }
