@@ -1,0 +1,24 @@
+name: Deploy Addon to Firefox
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Zip extension folder
+        run: zip -r wordle-sovler.zip . -x "*.zip" -x ".git/*" -x ".github/*" -x "*.gitignore"
+
+      - name: Publish to Firefox
+        uses: wdzeng/firefox-addon@v1
+        with:
+          addon-guid: "{34c23509-7506-4d38-b91c-33518069a627}"
+          xpi-path: wordle-sovler.zip
+          self-hosted: false
+          jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
