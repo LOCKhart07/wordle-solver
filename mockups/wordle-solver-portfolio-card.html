@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>portfolio card · Wordle Solver</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* pulled from extension/icons/icon128.png — the robot + tile mascot */
+    --brand:   #649E78;   /* robot sage green (panel base / icon tile glyph)  */
+    --brand-2: #4C7E5E;   /* mid gradient stop                                */
+    --brand-3: #38604A;   /* deep gradient stop                               */
+    --cream:   #F8F7F3;   /* panel text / icon tile bg                        */
+    --accent:  #F3BB4A;   /* Wordle gold (rule, highlights)                   */
+    /* product preview = a light browser frame on nytimes.com/games/wordle */
+    --surface: #FFFFFF;  --ink: #1A1A1B;  --chrome: #EDEDEC;
+    --muted: #6E7A74;    --border: #D3D6DA;
+    --w-green:  #6AAA64; --w-yellow: #C9B458; --w-gray: #787C7E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0b0b0c; }
+  body { display: grid; place-items: center; min-height: 100vh; padding: 40px;
+    font-family: 'Inter', system-ui, sans-serif; }
+  .hint { position: fixed; top: 14px; left: 16px; font-size: 12px;
+    color: rgba(255,255,255,.34); font-family: 'JetBrains Mono', monospace; }
+  body.bare { padding: 0; display: block; min-height: 0; }
+  body.bare .hint { display: none; }
+  body.bare #card { border-radius: 0; }
+
+  #card {
+    width: 1600px; height: 740px; overflow: hidden; position: relative;
+    border-radius: 20px;
+    background:
+      radial-gradient(900px 620px at 20% 26%, color-mix(in srgb, var(--brand) 72%, #fff) 0%, transparent 60%),
+      linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 46%, var(--brand-3) 100%);
+    display: flex; align-items: stretch;
+  }
+  #card::after { content: ""; position: absolute; inset: 0; opacity: .05;
+    mix-blend-mode: overlay;
+    background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 0);
+    background-size: 5px 5px; }
+
+  /* ---- LEFT: brand panel ---- */
+  .brand { flex: 1; padding: 92px 64px 92px 96px; position: relative; z-index: 2;
+    display: flex; flex-direction: column; justify-content: center; gap: 24px; }
+  .kicker { font-size: 14px; letter-spacing: .42em; font-weight: 700;
+    color: color-mix(in srgb, var(--cream) 56%, transparent); text-transform: uppercase; }
+  .lockup { display: flex; align-items: center; gap: 28px; }
+  .icon { width: 124px; height: 124px; border-radius: 30px; flex-shrink: 0;
+    background: var(--cream); overflow: hidden;
+    box-shadow: 0 20px 44px rgba(0,0,0,.40), 0 0 0 1px rgba(255,255,255,.12) inset; }
+  .icon img { width: 100%; height: 100%; display: block; }
+  .wordmark { font-size: 74px; font-weight: 800; color: var(--cream);
+    letter-spacing: -2px; line-height: 1; }
+  .rule { width: 64px; height: 4px; border-radius: 2px; background: var(--accent); }
+  .tag { font-size: 31px; font-weight: 700; color: var(--cream);
+    line-height: 1.3; max-width: 580px; }
+  .tag .soft { color: color-mix(in srgb, var(--cream) 60%, transparent); font-weight: 500; }
+  .sub { font-size: 16.5px; font-weight: 500; max-width: 540px; line-height: 1.5;
+    color: color-mix(in srgb, var(--cream) 58%, transparent); }
+
+  /* ---- RIGHT: browser-chrome preview of the live Wordle board ---- */
+  .stage { width: 620px; position: relative; z-index: 2; }
+  .glow { position: absolute; width: 480px; height: 480px; border-radius: 50%;
+    top: 50%; left: 46%; transform: translate(-50%,-50%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 68%); }
+  .win { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 470px; background: var(--surface); border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.06);
+    box-shadow: 0 50px 100px rgba(0,0,0,.50), 0 0 0 1px rgba(0,0,0,.30); }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 13px 16px;
+    background: var(--chrome); border-bottom: 1px solid var(--border); }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ED6A5E; } .dot.y { background: #F4BE4F; } .dot.g { background: #61C554; }
+  .url { flex: 1; margin-left: 10px; background: #fff; border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 12px; font-size: 12px; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace; }
+  .page { padding: 22px 30px 26px; }
+  .nyt { text-align: center; font-size: 26px; font-weight: 800; color: var(--ink);
+    letter-spacing: .4px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    margin-bottom: 22px; }
+
+  .board { display: grid; grid-template-rows: repeat(3, 1fr); gap: 7px;
+    width: 286px; margin: 0 auto; }
+  .brow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  .tile { aspect-ratio: 1; display: grid; place-items: center;
+    font-size: 28px; font-weight: 700; color: #fff; border-radius: 3px;
+    font-family: 'Inter', sans-serif; }
+  .tile.green  { background: var(--w-green); }
+  .tile.yellow { background: var(--w-yellow); }
+  .tile.gray   { background: var(--w-gray); }
+  .tile.empty  { background: #fff; border: 2px solid var(--border); color: transparent; }
+
+  /* THE injected extension control — the product's signature surface + hero */
+  .ext { margin: 26px auto 0; width: 360px; display: flex; align-items: stretch;
+    gap: 10px; }
+  .ext .btn { display: flex; align-items: center; justify-content: center;
+    padding: 0 18px; font-size: 14px; font-weight: 700; color: #fff;
+    background: linear-gradient(180deg, var(--brand) 0%, var(--brand-2) 100%);
+    border: 1px solid var(--brand-3); border-radius: 9px; white-space: nowrap;
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--brand) 38%, transparent); }
+  .ext .out { flex: 1; border: 1.5px solid var(--w-green);
+    background: color-mix(in srgb, var(--w-green) 12%, #fff);
+    border-radius: 9px; padding: 7px 16px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  .ext .out .lbl { font-size: 9.5px; font-weight: 800; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--w-green); }
+  .ext .out .word { font-size: 38px; font-weight: 800; letter-spacing: 4px;
+    color: var(--ink); line-height: 1.05; font-family: 'JetBrains Mono', monospace; }
+  .foot { display: flex; align-items: center; justify-content: center; gap: 7px;
+    margin-top: 22px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .foot .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--w-green); }
+</style>
+</head>
+<body>
+  <div class="hint">portfolio card · 1600×740. Open with #bare for the exact-crop export.</div>
+  <script>if (location.hash === '#bare') document.body.classList.add('bare');</script>
+
+  <div id="card">
+    <!-- LEFT: brand panel -->
+    <div class="brand">
+      <div class="kicker">Browser Extension</div>
+      <div class="lockup">
+        <span class="icon"><img src="../extension/icons/icon128.png" alt="" /></span>
+        <span class="wordmark">Wordle Solver</span>
+      </div>
+      <div class="rule"></div>
+      <div class="tag">Your best next guess, one click.<br />
+        <span class="soft">Right inside the daily puzzle.</span></div>
+      <div class="sub">Reads the board straight off nytimes.com, filters every valid
+        word by your green, yellow, and gray clues, and surfaces the pick.</div>
+    </div>
+
+    <!-- RIGHT: live Wordle board with the injected solver control -->
+    <div class="stage">
+      <div class="glow"></div>
+      <div class="win">
+        <div class="bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="url">nytimes.com/games/wordle</span>
+        </div>
+        <div class="page">
+          <div class="nyt">Wordle</div>
+          <div class="board">
+            <div class="brow">
+              <div class="tile yellow">C</div><div class="tile gray">R</div>
+              <div class="tile green">A</div><div class="tile gray">N</div>
+              <div class="tile green">E</div>
+            </div>
+            <div class="brow">
+              <div class="tile green">P</div><div class="tile gray">L</div>
+              <div class="tile green">A</div><div class="tile green">C</div>
+              <div class="tile green">E</div>
+            </div>
+            <div class="brow">
+              <div class="tile empty">P</div><div class="tile empty">E</div>
+              <div class="tile empty">A</div><div class="tile empty">C</div>
+              <div class="tile empty">E</div>
+            </div>
+          </div>
+          <div class="ext">
+            <div class="btn">Get Best Guess</div>
+            <div class="out">
+              <span class="lbl">Best Guess</span>
+              <span class="word">PEACE</span>
+            </div>
+          </div>
+          <div class="foot"><span class="pip"></span>1 word left · narrowed from 14,855</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
